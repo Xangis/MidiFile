@@ -16,7 +16,7 @@ private:
     short _format;
 	bool _loaded;
     unsigned char* _midiData;
-    int _size;
+    unsigned long _size;
     short _numTracks;
     unsigned short _timeDivision;
 };
