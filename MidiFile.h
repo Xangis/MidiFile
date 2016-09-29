@@ -11,8 +11,14 @@ class MidiFile
 {
 public:
     MidiFile();
+	bool Load(const char* filename);
 private:
-    int _format;
+    short _format;
+	bool _loaded;
+    unsigned char* _midiData;
+    int _size;
+    short _numTracks;
+    unsigned short _timeDivision;
 };
 
 #endif
