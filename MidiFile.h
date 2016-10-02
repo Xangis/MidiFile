@@ -17,6 +17,11 @@ public:
     MidiFile();
 	bool Load(const char* filename);
 	bool ReadTrack(int track, unsigned int dataPtr, unsigned int length);
+	int GetNumEvents();
+	int GetNumTracks();
+	int GetLength();
+	int GetSize();
+	int GetType();
 private:
 	bool ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos);
 	bool ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);

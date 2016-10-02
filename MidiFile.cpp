@@ -266,3 +266,53 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 	printf("Loaded track %d with %d events.", track, numEvents);
 	return true;
 }
+
+int MidiFile::GetNumEvents()
+{
+	int events = 0;
+	for( int i = 0; i < _midiTracks.size(); i++ )
+	{
+		events += _midiTracks[i]->size();
+	}
+	return events;
+}
+
+int MidiFile::GetNumTracks()
+{
+	return _midiTracks.size();
+}
+
+int MidiFile::GetLength()
+{
+	int highesttick = 0;
+	int currenttick = 0;
+	for( int i = 0; i < _midiTracks.size(); i++ )
+	{
+		currenttick = 0;
+		std::list<MIDIEvent*>::iterator iter;
+		for( iter = _midiTracks[i]->begin(); iter != _midiTracks[i]->end(); iter++ )
+		{
+			currenttick += (*iter)->timeDelta;
+		}
+		if( currenttick > highesttick )
+		{
+			highesttick = currenttick;
+		}
+	}
+	printf("MIDI file length: %d ticks, time division %d", highesttick, _timeDivision);
+	if( _timeDivision > 0 )
+	{
+		return highesttick / _timeDivision;
+	}
+	return -1;
+}
+
+int MidiFile::GetSize()
+{
+	return _size;
+}
+
+int MidiFile::GetType()
+{
+	return _format;
+}
