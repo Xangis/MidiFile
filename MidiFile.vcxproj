@@ -66,6 +66,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="MidiEvent.h" />
     <ClInclude Include="MidiFile.h" />
   </ItemGroup>
   <ItemGroup>

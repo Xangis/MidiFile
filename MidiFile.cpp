@@ -1,8 +1,8 @@
 #include "MidiFile.h"
 #include <cstdio>
-//#include <stdio.h>
 #include <string.h>
 
+// Utility functions.
 unsigned long Read4Bytes(unsigned char* data)
 {
 	return (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
@@ -15,18 +15,130 @@ short Read2Bytes(unsigned char* data)
 
 // Takes a buffer and an unsigned long value. Reads a variable-length value into the value
 // field and returns the number of bytes read.
-unsigned long ReadVariableLength(unsigned char* inpPos, unsigned long* value)
+unsigned long ReadVariableLength(unsigned char* inPos, unsigned long* value)
 {
-	unsigned char* pos = inpPos;
+	unsigned char* pos = inPos;
 	*value = 0;
 	do
 	{
-		*value = (*value << 7) + (*inpPos & 0x7F);
+		*value = (*value << 7) + (*inPos & 0x7F);
 	}
-	while( *inpPos++ & 0x80 );
-	return inpPos - pos;
+	while( *inPos++ & 0x80 );
+	return inPos - pos;
 }
 
+bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos)
+{
+	unsigned long tempo;
+	short meta = *inPos++;
+	unsigned long metalen;
+	int sizeRead = ReadVariableLength(inPos, &metalen);
+	
+	switch(meta)
+	{
+	case 0x2F:
+		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, 0);
+		break;
+	case 0x51:
+		tempo = (*inPos++ << 16);
+		tempo += (*inPos++ << 8);
+		tempo += *inPos++;
+		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, tempo);
+		break;
+	default:
+		inPos += metalen;
+		printf("Unrecognized meta event %d", meta);
+		break;
+	}
+	return true;
+}
+
+bool MidiFile::ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message)
+{
+	switch(message)
+	{
+	case 0xF0:
+		{
+			printf("SysEx Message");
+			unsigned long datalen;
+			int bytesRead = ReadVariableLength(inPos, &datalen);
+			inPos += datalen;
+		}
+		break;
+	case 0xF1:
+		// MIDI Time code.
+		printf("MIDI Time Code");
+		inPos += 1;
+		break;
+	case 0xF3:
+		// Song select.
+		printf("Song Select");
+		inPos += 1;
+		break;
+	case 0xF2:
+		printf("Song Position");
+		inPos += 2;
+		break;
+	default:
+		printf("Unrecognized message %d", message);
+		break;
+	}
+	return true;
+}
+
+bool MidiFile::ParseChannelMessage(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message)
+{
+	unsigned short value1;
+	unsigned short value2;
+
+	switch( message & 0xF0 )
+	{
+	case 0x80:
+		// Note off.
+		break;
+	case 0x90:
+		// Note on.
+		break;
+	case 0xA0:
+		// Aftertouch
+		break;
+	case 0xB0:
+		// Control change
+		value1 = *inPos++;
+		value2 = *inPos++;
+		AddEvent(track, message & 0x0F, deltaTime, message, value1, 0, 0);
+		break;
+	case 0xC0:
+		// Program change.
+		break;
+	case 0xD0:
+		// Channel aftertouch pressure
+		value1 = *inPos++;
+		AddEvent(track, message & 0x0F, deltaTime, message, value1, 0, 0);
+		break;
+	case 0xE0:
+		// Pitch bend
+		value1 = *inPos++;
+		value1 = (value1 << 7) + *inPos++;
+		AddEvent(track, message & 0x0F, deltaTime, message, value1, 0, 0);
+		break;
+	}
+	return true;
+}
+
+void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned long timedelta, unsigned short message, unsigned short value1, unsigned short value2, unsigned long lval)
+{
+	MIDIEvent* midiEvent = new MIDIEvent();
+	midiEvent->timeDelta = timedelta;
+	midiEvent->message = message;
+	midiEvent->channel = channel;
+	midiEvent->value1 = value1;
+	midiEvent->value2 = value2;
+	midiEvent->lval = lval;
+	_midiTracks[track]->push_back(midiEvent);
+}
+
+// Class methods.
 MidiFile::MidiFile()
 {
     _format = TYPE0;
@@ -92,11 +204,12 @@ bool MidiFile::Load(const char* filename)
 		}
 		unsigned long trackSize = Read4Bytes(&(_midiData[ptr]));
 		ptr += 4;
+		_midiTracks.push_back(new std::list<MIDIEvent*>());
 		if( currentTrack == 0 && ptr != 22 )
 		{
 			printf("Math error.");
 		}
-		ReadTrack(ptr, trackSize);
+		ReadTrack(currentTrack, ptr, trackSize);
 		currentTrack += 1;
 		ptr += trackSize;
 	}
@@ -107,7 +220,7 @@ bool MidiFile::Load(const char* filename)
 }
 
 // Reads a single track from a MIDI file. Returns true on success, false on fail.
-bool MidiFile::ReadTrack(unsigned int dataPtr, unsigned int length)
+bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 {
 	if( _midiData == NULL )
 	{
@@ -128,11 +241,11 @@ bool MidiFile::ReadTrack(unsigned int dataPtr, unsigned int length)
 			ptr++;
 			if( msg == 0xFF )
 			{
-				//MetaEvent();
+				ParseMetaEvent(track, deltaTime, ptr);
 			}
 			else
 			{
-				//SysCommon(msg);
+				ParseSysCommon(track, deltaTime, ptr, msg);
 			}
 		}
 		else
@@ -146,7 +259,10 @@ bool MidiFile::ReadTrack(unsigned int dataPtr, unsigned int length)
 			{
 				msg = lastMsg;
 			}
-			//ChannelMessage(msg);
+			ParseChannelMessage(track, deltaTime, ptr, msg);
 		}
 	}
+	int numEvents = _midiTracks[track]->size();
+	printf("Loaded track %d with %d events.", track, numEvents);
+	return true;
 }
