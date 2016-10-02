@@ -12,6 +12,7 @@ class MidiFile
 public:
     MidiFile();
 	bool Load(const char* filename);
+	bool ReadTrack(unsigned int dataPtr, unsigned int length);
 private:
     short _format;
 	bool _loaded;

@@ -13,6 +13,20 @@ short Read2Bytes(unsigned char* data)
 	return (data[0] << 8) + data[1];
 }
 
+// Takes a buffer and an unsigned long value. Reads a variable-length value into the value
+// field and returns the number of bytes read.
+unsigned long ReadVariableLength(unsigned char* inpPos, unsigned long* value)
+{
+	unsigned char* pos = inpPos;
+	*value = 0;
+	do
+	{
+		*value = (*value << 7) + (*inpPos & 0x7F);
+	}
+	while( *inpPos++ & 0x80 );
+	return inpPos - pos;
+}
+
 MidiFile::MidiFile()
 {
     _format = TYPE0;
@@ -82,6 +96,7 @@ bool MidiFile::Load(const char* filename)
 		{
 			printf("Math error.");
 		}
+		ReadTrack(ptr, trackSize);
 		currentTrack += 1;
 		ptr += trackSize;
 	}
@@ -89,4 +104,49 @@ bool MidiFile::Load(const char* filename)
 	_loaded = true;
 
 	return true;
+}
+
+// Reads a single track from a MIDI file. Returns true on success, false on fail.
+bool MidiFile::ReadTrack(unsigned int dataPtr, unsigned int length)
+{
+	if( _midiData == NULL )
+	{
+		return false;
+	}
+	unsigned char* ptr = &(_midiData[dataPtr]);
+	unsigned char* endPtr = ptr + length;
+	unsigned char lastMsg = 0;
+	short msg;
+
+	while( ptr < endPtr )
+	{
+		unsigned long deltaTime;
+		ptr += ReadVariableLength(ptr, &deltaTime);
+		msg = *ptr;
+		if( (msg & 0xF0) == 0xF0 )
+		{
+			ptr++;
+			if( msg == 0xFF )
+			{
+				//MetaEvent();
+			}
+			else
+			{
+				//SysCommon(msg);
+			}
+		}
+		else
+		{
+			if( msg & 0x80 )
+			{
+				ptr++;
+				lastMsg = msg;
+			}
+			else
+			{
+				msg = lastMsg;
+			}
+			//ChannelMessage(msg);
+		}
+	}
 }
