@@ -3,6 +3,7 @@
 
 struct MIDIEvent
 {
+	unsigned long absoluteTime; // All time deltas before this one, added up, plus the delta for this event.
 	unsigned long timeDelta;
 	unsigned short message;
 	unsigned short channel;
