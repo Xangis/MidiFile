@@ -29,9 +29,9 @@ unsigned long ReadVariableLength(unsigned char* inPos, unsigned long* value)
 
 bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos)
 {
-	unsigned long tempo;
+	unsigned long tempo = 0;
 	short meta = *inPos++;
-	unsigned long metalen;
+	unsigned long metalen = 0;
 	int sizeRead = ReadVariableLength(inPos, &metalen);
 	
 	switch(meta)
@@ -40,9 +40,9 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, 0);
 		break;
 	case 0x51:
-		tempo = (*inPos++ << 16);
-		tempo += (*inPos++ << 8);
-		tempo += *inPos++;
+		tempo = *inPos++;
+		tempo = (tempo << 8) + *inPos++;
+		tempo = (tempo << 8) + *inPos++;
 		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, tempo);
 		break;
 	default:
@@ -130,6 +130,16 @@ void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned l
 {
 	MIDIEvent* midiEvent = new MIDIEvent();
 	midiEvent->timeDelta = timedelta;
+	if( _midiTracks[track]->size() > 0 )
+	{
+		std::list<MIDIEvent*>::iterator iter = _midiTracks[track]->end();
+		--iter;
+		midiEvent->absoluteTime = (*iter)->absoluteTime + midiEvent->timeDelta;
+	}
+	else
+	{
+		midiEvent->absoluteTime = midiEvent->timeDelta;
+	}
 	midiEvent->message = message;
 	midiEvent->channel = channel;
 	midiEvent->value1 = value1;
@@ -195,8 +205,6 @@ bool MidiFile::Load(const char* filename)
 		chars[2] = _midiData[ptr+2];
 		chars[3] = _midiData[ptr+3];
 		ptr += 4;
-		//memset(chars, 0, 4);
-		//memcpy(&(_midiData[14]), chars, 4);
 		if( memcmp(chars, "MTrk", 4) != 0 )
 		{
 			printf("MIDI File lacks correct track data.");
@@ -286,17 +294,39 @@ int MidiFile::GetLength()
 {
 	int highesttick = 0;
 	int currenttick = 0;
+	int tempoTicks = 0;
 	for( int i = 0; i < _midiTracks.size(); i++ )
 	{
-		currenttick = 0;
-		std::list<MIDIEvent*>::iterator iter;
-		for( iter = _midiTracks[i]->begin(); iter != _midiTracks[i]->end(); iter++ )
+
+		MIDIEvent* lastEvent = _midiTracks[i]->back();
+
+		if( _midiTracks[i]->size() > 0 )
 		{
-			currenttick += (*iter)->timeDelta;
+			std::list<MIDIEvent*>::iterator iter = _midiTracks[i]->end();
+			--iter;
+			currenttick = (*iter)->absoluteTime;
+		}
+		else
+		{
+			currenttick = 0;
 		}
 		if( currenttick > highesttick )
 		{
 			highesttick = currenttick;
+		}
+		
+		for( std::list<MIDIEvent*>::iterator eit = _midiTracks[i]->begin(); eit != _midiTracks[i]->end(); eit++ )
+		{
+			if( (*eit)->message == 0xFF && (*eit)->value1 == 0x51 )
+			{
+				tempoTicks = (*eit)->lval;
+			}
+		}
+
+		if( tempoTicks != 0 )
+		{
+			int tracklength = (tempoTicks * highesttick) / (_timeDivision * 100000);
+			printf( "Track length using tempo method is %d seconds", tracklength );
 		}
 	}
 	printf("MIDI file length: %d ticks, time division %d", highesttick, _timeDivision);
@@ -315,4 +345,17 @@ int MidiFile::GetSize()
 int MidiFile::GetType()
 {
 	return _format;
+}
+
+std::list<MIDIEvent*>* MidiFile::GetTrackData(int track)
+{
+	if( track < _midiTracks.size() )
+	{
+		return _midiTracks[track];
+	}
+}
+
+int MidiFile::GetPPQN()
+{
+	return _timeDivision;
 }

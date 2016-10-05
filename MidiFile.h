@@ -22,6 +22,8 @@ public:
 	int GetLength();
 	int GetSize();
 	int GetType();
+	int GetPPQN();
+	std::list<MIDIEvent*>* GetTrackData(int track);
 private:
 	bool ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos);
 	bool ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);
