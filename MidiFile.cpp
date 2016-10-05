@@ -93,26 +93,16 @@ bool MidiFile::ParseChannelMessage(int track, unsigned long deltaTime, unsigned 
 
 	switch( message & 0xF0 )
 	{
-	case 0x80:
-		// Note off.
-		break;
-	case 0x90:
-		// Note on.
-		break;
-	case 0xA0:
-		// Aftertouch
-		break;
-	case 0xB0:
-		// Control change
+	case 0x80: // Note off.
+	case 0x90: // Note on.
+	case 0xA0: // Aftertouch.
+	case 0xB0: // Control change.
 		value1 = *inPos++;
 		value2 = *inPos++;
 		AddEvent(track, message & 0x0F, deltaTime, message, value1, 0, 0);
 		break;
-	case 0xC0:
-		// Program change.
-		break;
-	case 0xD0:
-		// Channel aftertouch pressure
+	case 0xC0: // Program change.
+	case 0xD0: // Channel aftertouch pressure
 		value1 = *inPos++;
 		AddEvent(track, message & 0x0F, deltaTime, message, value1, 0, 0);
 		break;
