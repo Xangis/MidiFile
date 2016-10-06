@@ -43,6 +43,7 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 			memcpy(text, inPos+1, metalen);
 			printf("Text event: %s\n", text);
 			inPos += metalen;
+            delete[] text;
 			break;
 		}
 	case 0x03:
