@@ -2,6 +2,7 @@
 #define _MIDIFILE_H_
 
 #include "MidiEvent.h"
+#include "MidiTrack.h"
 #include <list>
 #include <vector>
 
@@ -15,6 +16,7 @@ class MidiFile
 {
 public:
     MidiFile();
+	~MidiFile();
 	bool Load(const char* filename);
 	bool ReadTrack(int track, unsigned int dataPtr, unsigned int length);
 	int GetNumEvents();
@@ -23,7 +25,7 @@ public:
 	int GetSize();
 	int GetType();
 	int GetPPQN();
-	std::list<MIDIEvent*>* GetTrackData(int track);
+	MidiTrack* GetTrackData(int track);
 private:
 	bool ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos);
 	bool ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);
@@ -36,7 +38,11 @@ private:
     unsigned long _size;
     short _numTracks;
     unsigned short _timeDivision;
-	std::vector<std::list<MIDIEvent*>*> _midiTracks;
+	unsigned char _timeSignatureNumerator;
+	unsigned char _timeSignatureDenominator;
+	unsigned char _timeSignatureTicksPerClick;
+	unsigned char _timeSignatureThirtysecondNotesPerMidiQuarter;
+	std::vector<MidiTrack*> _midiTracks;
 };
 
 #endif

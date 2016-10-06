@@ -47,28 +47,54 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 			break;
 		}
 	case 0x03:
-		_trackName = new unsigned char[metalen+1];
-		_trackName[metalen] = 0;
-		memcpy(_trackName, inPos+1, metalen);
-		printf("Track name: %s\n", _trackName);
+		_midiTracks[track]->_title = new unsigned char[metalen+1];
+		_midiTracks[track]->_title[metalen] = 0;
+		memcpy(_midiTracks[track]->_title, inPos+1, metalen);
+		printf("Track name: %s\n", _midiTracks[track]->_title);
 		inPos += metalen;
 		break;
+	case 0x21:
+		{
+			unsigned char midiPort = *inPos++;
+			printf("MIDI Port %d.\n", midiPort);
+			break;
+		}
 	case 0x2F:
 		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, 0);
 		break;
 	case 0x51:
-		tempo = *inPos++;
-		tempo = (tempo << 8) + *inPos++;
-		tempo = (tempo << 8) + *inPos++;
-		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, tempo);
+		{
+			unsigned char byte1 = *inPos++;
+			tempo = byte1;
+			unsigned char byte2 = *inPos++;
+			tempo = (tempo << 8) + byte2;
+			unsigned char byte3 = *inPos++;
+			tempo = (tempo << 8) + byte3;
+			int calculatedTempo = 60000000 / tempo;
+			printf("Tempo: %d value, BPM = %d, byte1 = %d, byte2 = %d, byte3 = %d\n", tempo, calculatedTempo, byte1, byte2, byte3);
+			AddEvent(track, 0, deltaTime, 0xFF, meta, 0, tempo);
+		}
+		break;
+	case 0x54:
+		inPos += metalen;
+		printf("SMPTE offset message, length %d\n", metalen);
 		break;
 	case 0x58:
-		printf("Time signature.\n");
-		inPos += metalen;
-		break;
+		{
+			_timeSignatureNumerator = *inPos++;
+			_timeSignatureDenominator = *inPos++;
+			_timeSignatureTicksPerClick = *inPos++;
+			_timeSignatureThirtysecondNotesPerMidiQuarter = *inPos++;
+			printf("Time signature %d / %d with %d ticks per click and %d thirtyseconds per quarter note.\n", 
+				_timeSignatureNumerator, _timeSignatureDenominator, _timeSignatureTicksPerClick, _timeSignatureThirtysecondNotesPerMidiQuarter);
+			break;
+		}
 	case 0x59:
-		printf("Key signature.\n");
-		inPos += metalen;
+		{
+			char sharpFlat = *inPos++;
+			unsigned char majorMinor = *inPos++;
+			printf("Key signature: %d sharp/flat, %d major/minor (0=major, 1=minor).\n", sharpFlat, majorMinor);
+		}
 		break;
 	default:
 		inPos += metalen;
@@ -145,9 +171,9 @@ void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned l
 {
 	MIDIEvent* midiEvent = new MIDIEvent();
 	midiEvent->timeDelta = timedelta;
-	if( _midiTracks[track]->size() > 0 )
+	if( _midiTracks[track]->_midiEvents.size() > 0 )
 	{
-		std::list<MIDIEvent*>::iterator iter = _midiTracks[track]->end();
+		std::list<MIDIEvent*>::iterator iter = _midiTracks[track]->_midiEvents.end();
 		--iter;
 		midiEvent->absoluteTime = (*iter)->absoluteTime + midiEvent->timeDelta;
 	}
@@ -160,7 +186,7 @@ void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned l
 	midiEvent->value1 = value1;
 	midiEvent->value2 = value2;
 	midiEvent->lval = lval;
-	_midiTracks[track]->push_back(midiEvent);
+	_midiTracks[track]->_midiEvents.push_back(midiEvent);
 }
 
 // Class methods.
@@ -169,6 +195,26 @@ MidiFile::MidiFile()
     _format = TYPE0;
 	_midiData = NULL;
 	_trackName = NULL;
+	_timeSignatureNumerator = -1;
+	_timeSignatureDenominator = -1;
+	_timeSignatureTicksPerClick = -1;
+	_timeSignatureThirtysecondNotesPerMidiQuarter = -1;
+}
+
+MidiFile::~MidiFile()
+{
+	if( _midiData != NULL )
+	{
+		delete[] _midiData;
+	}
+	if( _trackName != NULL )
+	{
+		delete[] _trackName;
+	}
+	for( int i = 0; i < _midiTracks.size(); i++ )
+	{
+		delete _midiTracks[i];
+	}
 }
 
 bool MidiFile::Load(const char* filename)
@@ -228,7 +274,7 @@ bool MidiFile::Load(const char* filename)
 		}
 		unsigned long trackSize = Read4Bytes(&(_midiData[ptr]));
 		ptr += 4;
-		_midiTracks.push_back(new std::list<MIDIEvent*>());
+		_midiTracks.push_back(new MidiTrack());
 		if( currentTrack == 0 && ptr != 22 )
 		{
 			printf("Math error.\n");
@@ -286,7 +332,7 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 			ParseChannelMessage(track, deltaTime, ptr, msg);
 		}
 	}
-	int numEvents = _midiTracks[track]->size();
+	int numEvents = _midiTracks[track]->_midiEvents.size();
 	printf("Loaded track %d with %d events.\n", track, numEvents);
 	return true;
 }
@@ -296,7 +342,7 @@ int MidiFile::GetNumEvents()
 	int events = 0;
 	for( int i = 0; i < _midiTracks.size(); i++ )
 	{
-		events += _midiTracks[i]->size();
+		events += _midiTracks[i]->_midiEvents.size();
 	}
 	return events;
 }
@@ -314,11 +360,11 @@ int MidiFile::GetLength()
 	for( int i = 0; i < _midiTracks.size(); i++ )
 	{
 
-		MIDIEvent* lastEvent = _midiTracks[i]->back();
+		MIDIEvent* lastEvent = _midiTracks[i]->_midiEvents.back();
 
-		if( _midiTracks[i]->size() > 0 )
+		if( _midiTracks[i]->_midiEvents.size() > 0 )
 		{
-			std::list<MIDIEvent*>::iterator iter = _midiTracks[i]->end();
+			std::list<MIDIEvent*>::iterator iter = _midiTracks[i]->_midiEvents.end();
 			--iter;
 			currenttick = (*iter)->absoluteTime;
 		}
@@ -331,7 +377,7 @@ int MidiFile::GetLength()
 			highesttick = currenttick;
 		}
 		
-		for( std::list<MIDIEvent*>::iterator eit = _midiTracks[i]->begin(); eit != _midiTracks[i]->end(); eit++ )
+		for( std::list<MIDIEvent*>::iterator eit = _midiTracks[i]->_midiEvents.begin(); eit != _midiTracks[i]->_midiEvents.end(); eit++ )
 		{
 			if( (*eit)->message == 0xFF && (*eit)->value1 == 0x51 )
 			{
@@ -363,7 +409,7 @@ int MidiFile::GetType()
 	return _format;
 }
 
-std::list<MIDIEvent*>* MidiFile::GetTrackData(int track)
+MidiTrack* MidiFile::GetTrackData(int track)
 {
 	if( track < _midiTracks.size() )
 	{

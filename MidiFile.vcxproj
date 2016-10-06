@@ -68,9 +68,11 @@
   <ItemGroup>
     <ClInclude Include="MidiEvent.h" />
     <ClInclude Include="MidiFile.h" />
+    <ClInclude Include="MidiTrack.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MidiFile.cpp" />
+    <ClCompile Include="MidiTrack.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
