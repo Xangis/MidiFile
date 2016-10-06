@@ -2,12 +2,12 @@
 
 MidiTrack::MidiTrack()
 {
-	_title = NULL;
+	_title = 0;
 }
 
 MidiTrack::~MidiTrack()
 {
-	if( _title != NULL )
+	if( _title != 0 )
 	{
 		delete[] _title;
 	}

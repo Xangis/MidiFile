@@ -33,7 +33,7 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 	short meta = *inPos++;
 	unsigned long metalen = 0;
 	int sizeRead = ReadVariableLength(inPos, &metalen);
-	
+
 	switch(meta)
 	{
 	case 0x01:
@@ -53,6 +53,12 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 		printf("Track name: %s\n", _midiTracks[track]->_title);
 		inPos += metalen;
 		break;
+	case 0x20:
+		{
+			unsigned char midiPort = *inPos++;
+			printf("MIDI Channel Prefix: %d.\n", midiPort);
+			break;
+		}
 	case 0x21:
 		{
 			unsigned char midiPort = *inPos++;
@@ -98,7 +104,7 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 		break;
 	default:
 		inPos += metalen;
-		printf("Unrecognized meta event %d\n", meta);
+		printf("Unrecognized meta event %d with length %d\n", meta, metalen);
 		break;
 	}
 	return true;
@@ -127,9 +133,12 @@ bool MidiFile::ParseSysCommon(int track, unsigned long deltaTime, unsigned char*
 		inPos += 1;
 		break;
 	case 0xF2:
-		printf("Song Position SysCommon message.\n");
-		inPos += 2;
-		break;
+        {
+            unsigned char byte1 = *inPos++;
+            unsigned char byte2 = *inPos++;
+		    printf("Song Position SysCommon message, byte1 = %d, byte2 = %d.\n", byte1, byte2);
+		    break;
+        }
 	default:
 		printf("Unrecognized SysCommon message %d\n", message);
 		break;
