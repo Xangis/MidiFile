@@ -47,7 +47,7 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 		break;
 	default:
 		inPos += metalen;
-		printf("Unrecognized meta event %d", meta);
+		printf("Unrecognized meta event %d\n", meta);
 		break;
 	}
 	return true;
@@ -59,28 +59,28 @@ bool MidiFile::ParseSysCommon(int track, unsigned long deltaTime, unsigned char*
 	{
 	case 0xF0:
 		{
-			printf("SysEx Message");
 			unsigned long datalen;
 			int bytesRead = ReadVariableLength(inPos, &datalen);
+			printf("SysEx Message, length %d\n", datalen);
 			inPos += datalen;
 		}
 		break;
 	case 0xF1:
 		// MIDI Time code.
-		printf("MIDI Time Code");
+		printf("MIDI Time Code message.\n");
 		inPos += 1;
 		break;
 	case 0xF3:
 		// Song select.
-		printf("Song Select");
+		printf("Song Select SysCommon message.\n");
 		inPos += 1;
 		break;
 	case 0xF2:
-		printf("Song Position");
+		printf("Song Position SysCommon message.\n");
 		inPos += 2;
 		break;
 	default:
-		printf("Unrecognized message %d", message);
+		printf("Unrecognized SysCommon message %d\n", message);
 		break;
 	}
 	return true;
@@ -166,12 +166,12 @@ bool MidiFile::Load(const char* filename)
 	{
 		if( memcmp(_midiData, "MThd", 4) != 0 )
 		{
-			printf("MIDI File is invalid, lacks MThd header.");
+			printf("MIDI File is invalid, lacks MThd header.\n");
 		}
 		int chunkSize = Read4Bytes(&(_midiData[4]));
 		if( chunkSize != 6 )
 		{
-			printf("MThd header size is incorrect.");
+			printf("MThd header size is incorrect.\n");
 		}
 		_format = Read2Bytes(&(_midiData[8]));
 		_numTracks = Read2Bytes(&(_midiData[10]));
@@ -179,7 +179,7 @@ bool MidiFile::Load(const char* filename)
 	}
 	else
 	{
-		printf("MIDI File lacks header. Is invalid.");
+		printf("MIDI File lacks header. Is invalid.\n");
 		_loaded = false;
 		return false;
 	}
@@ -197,7 +197,7 @@ bool MidiFile::Load(const char* filename)
 		ptr += 4;
 		if( memcmp(chars, "MTrk", 4) != 0 )
 		{
-			printf("MIDI File lacks correct track data.");
+			printf("MIDI File lacks correct track data.\n");
 			break;
 		}
 		unsigned long trackSize = Read4Bytes(&(_midiData[ptr]));
@@ -205,7 +205,7 @@ bool MidiFile::Load(const char* filename)
 		_midiTracks.push_back(new std::list<MIDIEvent*>());
 		if( currentTrack == 0 && ptr != 22 )
 		{
-			printf("Math error.");
+			printf("Math error.\n");
 		}
 		ReadTrack(currentTrack, ptr, trackSize);
 		currentTrack += 1;
@@ -261,7 +261,7 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 		}
 	}
 	int numEvents = _midiTracks[track]->size();
-	printf("Loaded track %d with %d events.", track, numEvents);
+	printf("Loaded track %d with %d events.\n", track, numEvents);
 	return true;
 }
 
@@ -316,10 +316,10 @@ int MidiFile::GetLength()
 		if( tempoTicks != 0 )
 		{
 			int tracklength = (tempoTicks * highesttick) / (_timeDivision * 100000);
-			printf( "Track length using tempo method is %d seconds", tracklength );
+			printf( "Track length using tempo method is %d seconds\n", tracklength );
 		}
 	}
-	printf("MIDI file length: %d ticks, time division %d", highesttick, _timeDivision);
+	printf("MIDI file length: %d ticks, time division %d\n", highesttick, _timeDivision);
 	if( _timeDivision > 0 )
 	{
 		return highesttick / _timeDivision;
