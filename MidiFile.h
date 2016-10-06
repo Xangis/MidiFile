@@ -32,6 +32,7 @@ private:
     short _format;
 	bool _loaded;
     unsigned char* _midiData;
+	unsigned char* _trackName;
     unsigned long _size;
     short _numTracks;
     unsigned short _timeDivision;

@@ -36,6 +36,22 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 	
 	switch(meta)
 	{
+	case 0x01:
+		{
+			unsigned char* text = new unsigned char[metalen+1];
+			text[metalen] = 0;
+			memcpy(text, inPos+1, metalen);
+			printf("Text event: %s\n", text);
+			inPos += metalen;
+			break;
+		}
+	case 0x03:
+		_trackName = new unsigned char[metalen+1];
+		_trackName[metalen] = 0;
+		memcpy(_trackName, inPos+1, metalen);
+		printf("Track name: %s\n", _trackName);
+		inPos += metalen;
+		break;
 	case 0x2F:
 		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, 0);
 		break;
@@ -44,6 +60,14 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 		tempo = (tempo << 8) + *inPos++;
 		tempo = (tempo << 8) + *inPos++;
 		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, tempo);
+		break;
+	case 0x58:
+		printf("Time signature.\n");
+		inPos += metalen;
+		break;
+	case 0x59:
+		printf("Key signature.\n");
+		inPos += metalen;
 		break;
 	default:
 		inPos += metalen;
@@ -143,6 +167,7 @@ MidiFile::MidiFile()
 {
     _format = TYPE0;
 	_midiData = NULL;
+	_trackName = NULL;
 }
 
 bool MidiFile::Load(const char* filename)
