@@ -403,7 +403,10 @@ int MidiFile::GetLength()
 	printf("MIDI file length: %d ticks, time division %d\n", highesttick, _timeDivision);
 	if( _timeDivision > 0 )
 	{
-		return highesttick / _timeDivision;
+		int time = highesttick / _timeDivision;
+		int length = time / 120;
+		int length2 = highesttick / 120 / 60;
+		return length;
 	}
 	return -1;
 }
