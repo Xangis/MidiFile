@@ -71,13 +71,19 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 	case 0x51:
 		{
 			unsigned char byte1 = *inPos++;
-			tempo = byte1;
 			unsigned char byte2 = *inPos++;
-			tempo = (tempo << 8) + byte2;
 			unsigned char byte3 = *inPos++;
+			unsigned char byte4 = *inPos++;
+			tempo = byte2;
 			tempo = (tempo << 8) + byte3;
+			tempo = (tempo << 8) + byte4;
 			int calculatedTempo = 60000000 / tempo;
-			printf("Tempo: %d value, BPM = %d, byte1 = %d, byte2 = %d, byte3 = %d\n", tempo, calculatedTempo, byte1, byte2, byte3);
+			printf("Tempo: %d value, BPM = %d, size read = %d, metalen = %d, byte1 = %d, byte2 = %d, byte3 = %d, byte4 = %d\n", tempo, calculatedTempo, sizeRead, metalen, byte1, byte2, byte3, byte4);
+			// Use the first occurrence of a tempo as the overall song tempo.
+			if( _tempo == 0 )
+			{
+				_tempo = calculatedTempo;
+			}
 			AddEvent(track, 0, deltaTime, 0xFF, meta, 0, tempo);
 		}
 		break;
@@ -87,10 +93,10 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 		break;
 	case 0x58:
 		{
-			_timeSignatureNumerator = *inPos++;
-			_timeSignatureDenominator = *inPos++;
-			_timeSignatureTicksPerClick = *inPos++;
-			_timeSignatureThirtysecondNotesPerMidiQuarter = *inPos++;
+			_timeSignatureNumerator = *inPos++; // Beats per measure.
+			_timeSignatureDenominator = *inPos++; // Beat division.
+			_timeSignatureTicksPerClick = *inPos++; // Clock ticks per quarter note.
+			_timeSignatureThirtysecondNotesPerMidiQuarter = *inPos++; // Should be 8 for normal tempo.
 			printf("Time signature %d / %d with %d ticks per click and %d thirtyseconds per quarter note.\n", 
 				_timeSignatureNumerator, _timeSignatureDenominator, _timeSignatureTicksPerClick, _timeSignatureThirtysecondNotesPerMidiQuarter);
 			break;
@@ -201,6 +207,7 @@ void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned l
 // Class methods.
 MidiFile::MidiFile()
 {
+	_tempo = 0;
     _format = TYPE0;
 	_midiData = NULL;
 	_trackName = NULL;
@@ -404,8 +411,10 @@ int MidiFile::GetLength()
 	if( _timeDivision > 0 )
 	{
 		int time = highesttick / _timeDivision;
-		int length = time / 120;
-		int length2 = highesttick / 120 / 60;
+		int length = time / _tempo;
+		int length2 = highesttick / _tempo / 60;
+		int quarterNotes = highesttick / GetPPQN();
+		int secondsAt120BPM = quarterNotes / 2;
 		return length;
 	}
 	return -1;
@@ -432,4 +441,13 @@ MidiTrack* MidiFile::GetTrackData(int track)
 int MidiFile::GetPPQN()
 {
 	return _timeDivision;
+}
+
+double MidiFile::GetBPM()
+{
+	if( _tempo != 0 )
+	{
+		return _tempo;
+	}
+	return 100.0;
 }

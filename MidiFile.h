@@ -25,6 +25,7 @@ public:
 	int GetSize();
 	int GetType();
 	int GetPPQN();
+	double GetBPM();
 	MidiTrack* GetTrackData(int track);
 private:
 	bool ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos);
@@ -37,6 +38,7 @@ private:
 	unsigned char* _trackName;
     unsigned long _size;
     short _numTracks;
+	double _tempo;
     unsigned short _timeDivision;
 	unsigned char _timeSignatureNumerator;
 	unsigned char _timeSignatureDenominator;
