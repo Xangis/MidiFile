@@ -26,6 +26,7 @@ public:
 	int GetType();
 	int GetPPQN();
 	double GetBPM();
+	double GetPulseLength();
 	MidiTrack* GetTrackData(int track);
 private:
 	bool ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos);

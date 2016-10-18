@@ -184,6 +184,10 @@ bool MidiFile::ParseChannelMessage(int track, unsigned long deltaTime, unsigned 
 
 void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned long timedelta, unsigned short message, unsigned short value1, unsigned short value2, unsigned long lval)
 {
+	if( timedelta > 2000000 )
+	{
+		printf("Bad time delta for AddEvent: %d\n", timedelta);
+	}
 	MIDIEvent* midiEvent = new MIDIEvent();
 	midiEvent->timeDelta = timedelta;
 	if( _midiTracks[track]->_midiEvents.size() > 0 )
@@ -323,7 +327,7 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 
 	while( ptr < endPtr )
 	{
-		unsigned long deltaTime;
+		unsigned long deltaTime = 0;
 		ptr += ReadVariableLength(ptr, &deltaTime);
 		msg = *ptr;
 		if( (msg & 0xF0) == 0xF0 )
@@ -376,10 +380,10 @@ int MidiFile::GetLength()
 {
 	int highesttick = 0;
 	int currenttick = 0;
-	int tempoTicks = 0;
+	double pulseLength = GetPulseLength();
+
 	for( int i = 0; i < _midiTracks.size(); i++ )
 	{
-
 		MIDIEvent* lastEvent = _midiTracks[i]->_midiEvents.back();
 
 		if( _midiTracks[i]->_midiEvents.size() > 0 )
@@ -397,24 +401,23 @@ int MidiFile::GetLength()
 			highesttick = currenttick;
 		}
 		
-		for( std::list<MIDIEvent*>::iterator eit = _midiTracks[i]->_midiEvents.begin(); eit != _midiTracks[i]->_midiEvents.end(); eit++ )
-		{
-			if( (*eit)->message == 0xFF && (*eit)->value1 == 0x51 )
-			{
-				tempoTicks = (*eit)->lval;
-			}
-		}
+		//for( std::list<MIDIEvent*>::iterator eit = _midiTracks[i]->_midiEvents.begin(); eit != _midiTracks[i]->_midiEvents.end(); eit++ )
+		//{
+		//	if( (*eit)->message == 0xFF && (*eit)->value1 == 0x51 )
+		//	{
+		//		tempoTicks = (*eit)->lval;
+		//	}
+		//}
 
-		if( tempoTicks != 0 )
+		if( currenttick != 0 )
 		{
-			int tracklength = (tempoTicks * highesttick) / (_timeDivision * 100000);
+			int tracklength = pulseLength * currenttick;
 			printf( "Track length using tempo method is %d seconds\n", tracklength );
 		}
 	}
 	printf("MIDI file length: %d ticks, time division %d\n", highesttick, _timeDivision);
 	if( _timeDivision > 0 )
 	{
-		double pulseLength = 60.0 / ( (double)GetPPQN() * GetBPM());
 		double songLength = pulseLength * highesttick;
 		//int time = highesttick / _timeDivision;
 		//int length = time / GetBPM();
@@ -461,4 +464,10 @@ double MidiFile::GetBPM()
 		return _tempo;
 	}
 	return 120.0;
+}
+
+double MidiFile::GetPulseLength()
+{
+	double pulseLength = 60.0 / ( (double)GetPPQN() * GetBPM());
+	return pulseLength;
 }
