@@ -95,8 +95,8 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 		{
 			_timeSignatureNumerator = *inPos++; // Beats per measure.
 			_timeSignatureDenominator = *inPos++; // Beat division.
-			_timeSignatureTicksPerClick = *inPos++; // Clock ticks per quarter note.
-			_timeSignatureThirtysecondNotesPerMidiQuarter = *inPos++; // Should be 8 for normal tempo.
+			_timeSignatureTicksPerClick = *inPos++; // Clock ticks per quarter note (MIDI ticks per metronome click).
+			_timeSignatureThirtysecondNotesPerMidiQuarter = *inPos++; // Should be 8 for normal tempo. 16 for double speed, 4 for half.
 			printf("Time signature %d / %d with %d ticks per click and %d thirtyseconds per quarter note.\n", 
 				_timeSignatureNumerator, _timeSignatureDenominator, _timeSignatureTicksPerClick, _timeSignatureThirtysecondNotesPerMidiQuarter);
 			break;
@@ -264,6 +264,10 @@ bool MidiFile::Load(const char* filename)
 		_format = Read2Bytes(&(_midiData[8]));
 		_numTracks = Read2Bytes(&(_midiData[10]));
 		_timeDivision = Read2Bytes(&(_midiData[12]));
+		if( _timeDivision < 0 )
+		{
+			printf("Time division is SMPTE, not BPM\n");
+		}
 	}
 	else
 	{
@@ -410,12 +414,19 @@ int MidiFile::GetLength()
 	printf("MIDI file length: %d ticks, time division %d\n", highesttick, _timeDivision);
 	if( _timeDivision > 0 )
 	{
-		int time = highesttick / _timeDivision;
-		int length = time / _tempo;
-		int length2 = highesttick / _tempo / 60;
-		int quarterNotes = highesttick / GetPPQN();
-		int secondsAt120BPM = quarterNotes / 2;
-		return length;
+		double pulseLength = 60.0 / ( (double)GetPPQN() * GetBPM());
+		double songLength = pulseLength * highesttick;
+		//int time = highesttick / _timeDivision;
+		//int length = time / GetBPM();
+		//int length2 = highesttick / GetBPM() / 60;
+		//int quarterNotes = highesttick / GetPPQN();
+		//int secondsDiv2 = quarterNotes / 2;
+		//int seconds = quarterNotes / GetBPM();
+		//int seconds2 = quarterNotes / _timeSignatureThirtysecondNotesPerMidiQuarter;
+		//int seconds3 = quarterNotes / _timeSignatureTicksPerClick;
+		//int seconds4 = (quarterNotes * GetBPM()) / 120;
+		//int seconds5 = highesttick / GetBPM();
+		return (int)songLength;
 	}
 	return -1;
 }
@@ -449,5 +460,5 @@ double MidiFile::GetBPM()
 	{
 		return _tempo;
 	}
-	return 100.0;
+	return 120.0;
 }

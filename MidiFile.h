@@ -39,7 +39,7 @@ private:
     unsigned long _size;
     short _numTracks;
 	double _tempo;
-    unsigned short _timeDivision;
+    short _timeDivision;
 	unsigned char _timeSignatureNumerator;
 	unsigned char _timeSignatureDenominator;
 	unsigned char _timeSignatureTicksPerClick;
