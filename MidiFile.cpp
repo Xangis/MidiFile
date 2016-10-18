@@ -47,11 +47,14 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 			break;
 		}
 	case 0x03:
-		_midiTracks[track]->_title = new unsigned char[metalen+1];
-		_midiTracks[track]->_title[metalen] = 0;
-		memcpy(_midiTracks[track]->_title, inPos+1, metalen);
-		printf("Track name: %s\n", _midiTracks[track]->_title);
-		inPos += metalen;
+		{
+			unsigned char* title = new unsigned char[metalen+1];
+			title[metalen] = 0;
+			memcpy(title, inPos+1, metalen);
+			printf("Track name: %s\n", title);
+			_midiTracks[track]->SetTitle(title);
+			inPos += metalen;
+		}
 		break;
 	case 0x20:
 		{
@@ -165,7 +168,7 @@ bool MidiFile::ParseChannelMessage(int track, unsigned long deltaTime, unsigned 
 	case 0xB0: // Control change.
 		value1 = *inPos++;
 		value2 = *inPos++;
-		AddEvent(track, message & 0x0F, deltaTime, message, value1, 0, 0);
+		AddEvent(track, message & 0x0F, deltaTime, message, value1, value2, 0);
 		break;
 	case 0xC0: // Program change.
 	case 0xD0: // Channel aftertouch pressure
@@ -190,11 +193,13 @@ void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned l
 	}
 	MIDIEvent* midiEvent = new MIDIEvent();
 	midiEvent->timeDelta = timedelta;
-	if( _midiTracks[track]->_midiEvents.size() > 0 )
+	if( _midiTracks[track]->GetNumEvents() > 0 )
 	{
-		std::list<MIDIEvent*>::iterator iter = _midiTracks[track]->_midiEvents.end();
-		--iter;
-		midiEvent->absoluteTime = (*iter)->absoluteTime + midiEvent->timeDelta;
+		MIDIEvent* lastEvent = _midiTracks[track]->GetLastEvent();
+		if( lastEvent != NULL )
+		{
+			midiEvent->absoluteTime = lastEvent->absoluteTime + midiEvent->timeDelta;
+		}
 	}
 	else
 	{
@@ -205,7 +210,7 @@ void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned l
 	midiEvent->value1 = value1;
 	midiEvent->value2 = value2;
 	midiEvent->lval = lval;
-	_midiTracks[track]->_midiEvents.push_back(midiEvent);
+	_midiTracks[track]->AddEvent(midiEvent);
 }
 
 // Class methods.
@@ -356,7 +361,7 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 			ParseChannelMessage(track, deltaTime, ptr, msg);
 		}
 	}
-	int numEvents = _midiTracks[track]->_midiEvents.size();
+	int numEvents = _midiTracks[track]->GetNumEvents();
 	printf("Loaded track %d with %d events.\n", track, numEvents);
 	return true;
 }
@@ -366,7 +371,7 @@ int MidiFile::GetNumEvents()
 	int events = 0;
 	for( int i = 0; i < _midiTracks.size(); i++ )
 	{
-		events += _midiTracks[i]->_midiEvents.size();
+		events += _midiTracks[i]->GetNumEvents();
 	}
 	return events;
 }
@@ -384,31 +389,19 @@ int MidiFile::GetLength()
 
 	for( int i = 0; i < _midiTracks.size(); i++ )
 	{
-		MIDIEvent* lastEvent = _midiTracks[i]->_midiEvents.back();
+		currenttick = 0;
+		MIDIEvent* lastEvent = _midiTracks[i]->GetLastEvent();
 
-		if( _midiTracks[i]->_midiEvents.size() > 0 )
+		if( lastEvent != NULL )
 		{
-			std::list<MIDIEvent*>::iterator iter = _midiTracks[i]->_midiEvents.end();
-			--iter;
-			currenttick = (*iter)->absoluteTime;
+			currenttick = lastEvent->absoluteTime;
 		}
-		else
-		{
-			currenttick = 0;
-		}
+
 		if( currenttick > highesttick )
 		{
 			highesttick = currenttick;
 		}
 		
-		//for( std::list<MIDIEvent*>::iterator eit = _midiTracks[i]->_midiEvents.begin(); eit != _midiTracks[i]->_midiEvents.end(); eit++ )
-		//{
-		//	if( (*eit)->message == 0xFF && (*eit)->value1 == 0x51 )
-		//	{
-		//		tempoTicks = (*eit)->lval;
-		//	}
-		//}
-
 		if( currenttick != 0 )
 		{
 			int tracklength = pulseLength * currenttick;
@@ -419,16 +412,6 @@ int MidiFile::GetLength()
 	if( _timeDivision > 0 )
 	{
 		double songLength = pulseLength * highesttick;
-		//int time = highesttick / _timeDivision;
-		//int length = time / GetBPM();
-		//int length2 = highesttick / GetBPM() / 60;
-		//int quarterNotes = highesttick / GetPPQN();
-		//int secondsDiv2 = quarterNotes / 2;
-		//int seconds = quarterNotes / GetBPM();
-		//int seconds2 = quarterNotes / _timeSignatureThirtysecondNotesPerMidiQuarter;
-		//int seconds3 = quarterNotes / _timeSignatureTicksPerClick;
-		//int seconds4 = (quarterNotes * GetBPM()) / 120;
-		//int seconds5 = highesttick / GetBPM();
 		return (int)songLength;
 	}
 	return -1;
@@ -459,6 +442,12 @@ int MidiFile::GetPPQN()
 
 double MidiFile::GetBPM()
 {
+	//if( _timeSignatureThirtysecondNotesPerMidiQuarter != 8 )
+	//{
+	//	return (_timeSignatureThirtysecondNotesPerMidiQuarter * _tempo) / 8;
+	//	// Divided by 4 seems more accurate. Not sure why.
+	//	return (_timeSignatureThirtysecondNotesPerMidiQuarter * _tempo) / 4;
+	//}
 	if( _tempo != 0 )
 	{
 		return _tempo;
