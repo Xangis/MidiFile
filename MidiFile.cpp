@@ -386,32 +386,12 @@ int MidiFile::GetLength()
 	int highesttick = 0;
 	int currenttick = 0;
 	double pulseLength = GetPulseLength();
+	int ticks = GetLengthInTicks();
 
-	for( int i = 0; i < _midiTracks.size(); i++ )
-	{
-		currenttick = 0;
-		MIDIEvent* lastEvent = _midiTracks[i]->GetLastEvent();
-
-		if( lastEvent != NULL )
-		{
-			currenttick = lastEvent->absoluteTime;
-		}
-
-		if( currenttick > highesttick )
-		{
-			highesttick = currenttick;
-		}
-		
-		if( currenttick != 0 )
-		{
-			int tracklength = pulseLength * currenttick;
-			printf( "Track length using tempo method is %d seconds\n", tracklength );
-		}
-	}
-	printf("MIDI file length: %d ticks, time division %d\n", highesttick, _timeDivision);
+	printf("MIDI file length: %d ticks, time division %d\n", ticks, _timeDivision);
 	if( _timeDivision > 0 )
 	{
-		double songLength = pulseLength * highesttick;
+		double songLength = pulseLength * ticks;
 		return (int)songLength;
 	}
 	return -1;
@@ -458,5 +438,39 @@ double MidiFile::GetBPM()
 double MidiFile::GetPulseLength()
 {
 	double pulseLength = 60.0 / ( (double)GetPPQN() * GetBPM());
-	return pulseLength;
+	//return pulseLength / 8.0;
+	return pulseLength / 4.0;
+	//return pulseLength / 2.0;
+	//return pulseLength;
+}
+
+
+int MidiFile::GetLengthInTicks()
+{
+	int highesttick = 0;
+	int currenttick = 0;
+	double pulseLength = GetPulseLength();
+
+	for( int i = 0; i < _midiTracks.size(); i++ )
+	{
+		currenttick = 0;
+		MIDIEvent* lastEvent = _midiTracks[i]->GetLastEvent();
+
+		if( lastEvent != NULL )
+		{
+			currenttick = lastEvent->absoluteTime;
+		}
+
+		if( currenttick > highesttick )
+		{
+			highesttick = currenttick;
+		}	
+
+		if( currenttick != 0 )
+		{
+			int tracklength = pulseLength * currenttick;
+			printf( "Track length using tempo method is %d seconds\n", tracklength );
+		}
+	}
+	return highesttick;
 }

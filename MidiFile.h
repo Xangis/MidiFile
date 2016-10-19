@@ -22,6 +22,7 @@ public:
 	int GetNumEvents();
 	int GetNumTracks();
 	int GetLength();
+	int GetLengthInTicks();
 	int GetSize();
 	int GetType();
 	int GetPPQN();
