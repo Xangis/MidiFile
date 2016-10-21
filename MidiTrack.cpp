@@ -21,7 +21,7 @@ MidiTrack::~MidiTrack()
 
 void MidiTrack::MoveToTick(unsigned int tick)
 {
-	if( tick = 0 )
+	if( tick == 0 )
 	{
 		_tickPointer = _midiEvents.begin();
 	}
