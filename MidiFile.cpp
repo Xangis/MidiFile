@@ -439,9 +439,9 @@ double MidiFile::GetPulseLength()
 {
 	double pulseLength = 60.0 / ( (double)GetPPQN() * GetBPM());
 	//return pulseLength / 8.0;
-	return pulseLength / 4.0;
+	//return pulseLength / 4.0;
 	//return pulseLength / 2.0;
-	//return pulseLength;
+	return pulseLength;
 }
 
 
