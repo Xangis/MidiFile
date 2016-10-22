@@ -5,6 +5,7 @@ MidiTrack::MidiTrack()
 	_tickPosition = 0;
 	_title = 0;
 	_tickPointer = _midiEvents.begin();
+	_assignedChannel = -1;
 }
 
 MidiTrack::~MidiTrack()

@@ -27,7 +27,7 @@ unsigned long ReadVariableLength(unsigned char* inPos, unsigned long* value)
 	return inPos - pos;
 }
 
-bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos)
+bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos, bool * trackDone)
 {
 	unsigned long tempo = 0;
 	short meta = *inPos++;
@@ -69,7 +69,8 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 			break;
 		}
 	case 0x2F:
-		AddEvent(track, 0, deltaTime, 0xFF, meta, 0, 0);
+		*trackDone = true;
+		//AddEvent(track, 0, deltaTime, 0xFF, meta, 0, 0);
 		break;
 	case 0x51:
 		{
@@ -329,8 +330,15 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 	unsigned char* endPtr = ptr + length;
 	unsigned char lastMsg = 0;
 	short msg;
+	// Track the note frequency on a track so we can assign a channel if it makes sense to do so.
+	int channelFrequency[16];
+	for(int i = 0; i < 16; i++)
+	{
+		channelFrequency[i] = 0;
+	}
 
-	while( ptr < endPtr )
+	bool trackDone = false;
+	while( ptr < endPtr && !trackDone )
 	{
 		unsigned long deltaTime = 0;
 		ptr += ReadVariableLength(ptr, &deltaTime);
@@ -340,7 +348,7 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 			ptr++;
 			if( msg == 0xFF )
 			{
-				ParseMetaEvent(track, deltaTime, ptr);
+				ParseMetaEvent(track, deltaTime, ptr, &trackDone);
 			}
 			else
 			{
@@ -359,10 +367,32 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 				msg = lastMsg;
 			}
 			ParseChannelMessage(track, deltaTime, ptr, msg);
+			// Increment channel message count.
+			int channel = msg & 0x0F;
+			channelFrequency[channel] += 1;
 		}
 	}
 	int numEvents = _midiTracks[track]->GetNumEvents();
 	printf("Loaded track %d with %d events.\n", track, numEvents);
+	// TODO: Use channel message count to assign a channel. There's probably a cleaner way to do this.
+	int channelsFound = 0;
+	for( int i = 0; i < 16; i++ )
+	{
+		if( channelFrequency[i] > 0 )
+		{
+			channelsFound += 1;
+		}
+	}
+	if( channelsFound == 1 )
+	{
+		for( int i = 0; i < 16; i++ )
+		{
+			if( channelFrequency[i] > 0 )
+			{
+				_midiTracks[track]->_assignedChannel = i;
+			}
+		}
+	}
 	return true;
 }
 

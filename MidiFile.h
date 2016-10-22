@@ -30,7 +30,7 @@ public:
 	double GetPulseLength();
 	MidiTrack* GetTrackData(int track);
 private:
-	bool ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos);
+	bool ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos, bool * trackDone);
 	bool ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);
 	bool ParseChannelMessage(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);
 	void AddEvent(unsigned short track, unsigned short channel, unsigned long timedelta, unsigned short message, unsigned short value1, unsigned short value2, unsigned long lval);

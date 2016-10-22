@@ -17,6 +17,7 @@ public:
 	MIDIEvent* GetLastEvent();
 	void AddEvent(MIDIEvent*);
 	std::list<MIDIEvent*>* GetEvents();
+	int _assignedChannel; // Zero-based index of assigned channel. 9 = Channel 10.
 private:
 	std::list<MIDIEvent*> _midiEvents;
 	const unsigned char* _title;
