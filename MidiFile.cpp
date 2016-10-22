@@ -13,6 +13,57 @@ short Read2Bytes(unsigned char* data)
 	return (data[0] << 8) + data[1];
 }
 
+void Write4Bytes(FILE* fp, unsigned char* data)
+{
+	fprintf(fp, "%c%c%c%c", data[0], data[1], data[2], data[3]);
+}
+
+void Write4Bytes(FILE* fp, unsigned long value)
+{
+	unsigned char* data = (unsigned char*)&value;
+	fprintf(fp, "%c%c%c%c", data[3], data[2], data[1], data[0]);
+}
+
+void Write2Bytes(FILE* fp, unsigned char* data)
+{
+	fprintf(fp, "%c%c", data[0], data[1]);
+}
+
+void Write2Bytes(FILE* fp, unsigned short value)
+{
+	unsigned char* data = (unsigned char*)&value;
+	fprintf(fp, "%c%c", data[1], data[0]);
+}
+
+int WriteVariableLength(register unsigned long value, unsigned char* output)
+{
+   int charsWritten = 0;
+   register unsigned long buffer;
+   buffer = value & 0x7F;
+
+   while ( (value >>= 7) )
+   {
+     buffer <<= 8;
+     buffer |= ((value & 0x7F) | 0x80);
+   }
+
+   while (true)
+   {
+      output[charsWritten] = buffer;
+      ++charsWritten;
+      if (buffer & 0x80)
+      {
+          buffer >>= 8;
+      }
+      else
+      {
+          break;
+      }
+   }
+   return charsWritten;
+}
+
+
 // Takes a buffer and an unsigned long value. Reads a variable-length value into the value
 // field and returns the number of bytes read.
 unsigned long ReadVariableLength(unsigned char* inPos, unsigned long* value)
@@ -27,8 +78,9 @@ unsigned long ReadVariableLength(unsigned char* inPos, unsigned long* value)
 	return inPos - pos;
 }
 
-bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos, bool * trackDone)
+int MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos, bool * trackDone)
 {
+    unsigned char* initialPosition = inPos;
 	unsigned long tempo = 0;
 	short meta = *inPos++;
 	unsigned long metalen = 0;
@@ -117,11 +169,12 @@ bool MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char*
 		printf("Unrecognized meta event %d with length %d\n", meta, metalen);
 		break;
 	}
-	return true;
+	return inPos - initialPosition;
 }
 
-bool MidiFile::ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message)
+int MidiFile::ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message)
 {
+    unsigned char* initialPosition = inPos;
 	switch(message)
 	{
 	case 0xF0:
@@ -153,12 +206,14 @@ bool MidiFile::ParseSysCommon(int track, unsigned long deltaTime, unsigned char*
 		printf("Unrecognized SysCommon message %d\n", message);
 		break;
 	}
-	return true;
+	return inPos - initialPosition;
 }
 
-bool MidiFile::ParseChannelMessage(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message)
+int MidiFile::ParseChannelMessage(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message)
 {
-	unsigned short value1;
+    unsigned char* initialPosition = inPos;
+
+    unsigned short value1;
 	unsigned short value2;
 
 	switch( message & 0xF0 )
@@ -167,8 +222,8 @@ bool MidiFile::ParseChannelMessage(int track, unsigned long deltaTime, unsigned 
 	case 0x90: // Note on.
 	case 0xA0: // Aftertouch.
 	case 0xB0: // Control change.
-		value1 = *inPos++;
-		value2 = *inPos++;
+		value1 = *inPos++; // Key or controller
+		value2 = *inPos++; // Velocity, pressure, or value.
 		AddEvent(track, message & 0x0F, deltaTime, message, value1, value2, 0);
 		break;
 	case 0xC0: // Program change.
@@ -183,7 +238,7 @@ bool MidiFile::ParseChannelMessage(int track, unsigned long deltaTime, unsigned 
 		AddEvent(track, message & 0x0F, deltaTime, message, value1, 0, 0);
 		break;
 	}
-	return true;
+	return inPos - initialPosition;
 }
 
 void MidiFile::AddEvent(unsigned short track, unsigned short channel, unsigned long timedelta, unsigned short message, unsigned short value1, unsigned short value2, unsigned long lval)
@@ -348,11 +403,11 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 			ptr++;
 			if( msg == 0xFF )
 			{
-				ParseMetaEvent(track, deltaTime, ptr, &trackDone);
+				ptr += ParseMetaEvent(track, deltaTime, ptr, &trackDone);
 			}
 			else
 			{
-				ParseSysCommon(track, deltaTime, ptr, msg);
+				ptr += ParseSysCommon(track, deltaTime, ptr, msg);
 			}
 		}
 		else
@@ -366,7 +421,7 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 			{
 				msg = lastMsg;
 			}
-			ParseChannelMessage(track, deltaTime, ptr, msg);
+			ptr += ParseChannelMessage(track, deltaTime, ptr, msg);
 			// Increment channel message count.
 			int channel = msg & 0x0F;
 			channelFrequency[channel] += 1;
@@ -465,13 +520,16 @@ double MidiFile::GetBPM()
 	return 120.0;
 }
 
+/**
+* Returns the pulse length in seconds.
+*/
 double MidiFile::GetPulseLength()
 {
-	double pulseLength = 60.0 / ( (double)GetPPQN() * GetBPM());
-	//return pulseLength / 8.0;
-	//return pulseLength / 4.0;
-	//return pulseLength / 2.0;
-	return pulseLength;
+	double quartersPerSecond = GetBPM() / 60.0;
+	double ticksPerSecond = (double)GetPPQN() * quartersPerSecond;
+	double secondsPerTick = 1.0 / ticksPerSecond;
+	//double pulseLength = 60.0 / ( (double)GetPPQN() * GetBPM());
+	return secondsPerTick;
 }
 
 
@@ -503,4 +561,63 @@ int MidiFile::GetLengthInTicks()
 		}
 	}
 	return highesttick;
+}
+
+
+bool MidiFile::Save(const char* filename)
+{
+	FILE* file = fopen(filename, "w");
+
+	fprintf(file, "MThd");
+
+	Write4Bytes(file, 6);
+	Write2Bytes(file, _format);
+	Write2Bytes(file, _numTracks);
+	Write2Bytes(file, GetPPQN());
+
+	for( int i = 0; i < _numTracks; i++ )
+	{
+		// TODO: String all the events together to create the track data buffer
+		// We need to know the number of bytes beforehand.
+		unsigned char* data = new unsigned char[32768]; // Max track size -- this needs to be unlimited.
+		memset( data, 0, 32768 );
+		int numBytesWritten = WriteTrackDataToBuffer(data, 32768, i);
+		fprintf(file, "MTrk");
+		Write4Bytes(file, numBytesWritten);
+        fwrite(data, numBytesWritten, 1, file);
+		delete data;
+	}
+
+	fclose(file);
+	return true;
+}
+
+int MidiFile::WriteTrackDataToBuffer(unsigned char* data, int size, int track)
+{
+    int dataPtr = 0;
+    int numEvents = 0;
+	std::list<MIDIEvent*>* events = _midiTracks[track]->GetEvents();
+    for( std::list<MIDIEvent*>::iterator it = events->begin(); it != events->end(); it++ )
+    {
+        MIDIEvent* evt = *it;
+        if( evt->message >= 144 && evt->message < 176 )
+        {
+            dataPtr += WriteVariableLength(evt->timeDelta, data+dataPtr);
+            data[dataPtr] = (unsigned char)evt->message;
+            data[dataPtr+1] = (unsigned char)evt->value1;
+            data[dataPtr+2] = (unsigned char)evt->value2;
+            dataPtr += 3;
+            numEvents++;
+        }
+        else
+        {
+            printf( "Unrecognized message %d not written.", evt->message );
+        }
+    }
+    // Write "end of track" marker.
+	data[dataPtr] = 0xFF;
+	data[dataPtr+1] = 0x2F;
+	data[dataPtr+2] = 0;
+    dataPtr += 3;
+    return dataPtr;
 }

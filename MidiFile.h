@@ -18,6 +18,7 @@ public:
     MidiFile();
 	~MidiFile();
 	bool Load(const char* filename);
+	bool Save(const char* filename);
 	bool ReadTrack(int track, unsigned int dataPtr, unsigned int length);
 	int GetNumEvents();
 	int GetNumTracks();
@@ -27,12 +28,13 @@ public:
 	int GetType();
 	int GetPPQN();
 	double GetBPM();
-	double GetPulseLength();
+	double GetPulseLength(); // Gets pulse length in seconds.
 	MidiTrack* GetTrackData(int track);
+	int WriteTrackDataToBuffer(unsigned char* data, int size, int track);
 private:
-	bool ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos, bool * trackDone);
-	bool ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);
-	bool ParseChannelMessage(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);
+	int ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos, bool * trackDone);
+	int ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);
+	int ParseChannelMessage(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);
 	void AddEvent(unsigned short track, unsigned short channel, unsigned long timedelta, unsigned short message, unsigned short value1, unsigned short value2, unsigned long lval);
     short _format;
 	bool _loaded;
