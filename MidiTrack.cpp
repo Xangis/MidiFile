@@ -90,7 +90,7 @@ MIDIEvent* MidiTrack::GetLastEvent()
 {
 	if( GetNumEvents() < 1 )
 	{
-		return NULL;
+		return 0;
 	}
 	std::list<MIDIEvent*>::iterator iter = _midiEvents.end();
 	return *(--iter);
