@@ -31,6 +31,7 @@ public:
 	double GetPulseLength(); // Gets pulse length in seconds.
 	MidiTrack* GetTrackData(int track);
 	int WriteTrackDataToBuffer(unsigned char* data, int size, int track);
+    void SetBPM(double bpm);
 private:
 	int ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* inPos, bool * trackDone);
 	int ParseSysCommon(int track, unsigned long deltaTime, unsigned char* inPos, unsigned short message);

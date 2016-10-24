@@ -133,7 +133,7 @@ int MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* 
 			tempo = byte2;
 			tempo = (tempo << 8) + byte3;
 			tempo = (tempo << 8) + byte4;
-			int calculatedTempo = 60000000 / tempo;
+			double calculatedTempo = 60000000.0 / tempo;
 			printf("Tempo: %d value, BPM = %d, size read = %d, metalen = %d, byte1 = %d, byte2 = %d, byte3 = %d, byte4 = %d\n", tempo, calculatedTempo, sizeRead, metalen, byte1, byte2, byte3, byte4);
 			// Use the first occurrence of a tempo as the overall song tempo.
 			if( _tempo == 0 )
@@ -507,17 +507,22 @@ int MidiFile::GetPPQN()
 
 double MidiFile::GetBPM()
 {
-	//if( _timeSignatureThirtysecondNotesPerMidiQuarter != 8 )
-	//{
-	//	return (_timeSignatureThirtysecondNotesPerMidiQuarter * _tempo) / 8;
-	//	// Divided by 4 seems more accurate. Not sure why.
-	//	return (_timeSignatureThirtysecondNotesPerMidiQuarter * _tempo) / 4;
-	//}
 	if( _tempo != 0 )
 	{
 		return _tempo;
 	}
 	return 120.0;
+}
+
+/**
+* This is intended to be used to change the tempo in realtime. As tempo messages come by,
+* this value should be changed.
+*
+* This will cause timing to be recalculated as the song plays.
+*/
+void MidiFile::SetBPM(double bpm)
+{
+    _tempo = bpm;
 }
 
 /**
