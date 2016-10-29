@@ -300,18 +300,21 @@ MidiFile::~MidiFile()
 
 bool MidiFile::Load(const char* filename)
 {
-	FILE* file = fopen(filename, "r");
+	FILE* file = fopen(filename, "rb");
 
 	fseek(file, 0, SEEK_END);
 	_size = ftell(file);
-	unsigned int numRead = 0;
+    printf( "File size is %d.", _size);
 	fseek(file, 0, 0);
 	if( _midiData != NULL )
 	{
 		delete[] _midiData;
 	}
-	_midiData = new unsigned char[_size];
-	numRead = fread(_midiData, _size, 1, file);
+    // Allocate an extra byte and ensure the data is always null-terminated and initialized.
+	_midiData = new unsigned char[_size+1];
+    memset( _midiData, 0, _size+1);
+	unsigned int numRead = 0;
+	numRead = fread(_midiData, 1, _size, file);
 
 	fclose(file);
 
@@ -344,6 +347,9 @@ bool MidiFile::Load(const char* filename)
 	int ptr = 14;
 	int currentTrack = 0;
 
+    // Used for recovery when track size is incorrect.
+    int lastTrackPtr = 0;
+
 	while( ptr < _size && currentTrack < _numTracks )
 	{
 		char chars[4];
@@ -354,7 +360,31 @@ bool MidiFile::Load(const char* filename)
 		ptr += 4;
 		if( memcmp(chars, "MTrk", 4) != 0 )
 		{
-			printf("MIDI File lacks correct track data.\n");
+			printf("MIDI File lacks correct track data at position %d.\n", ptr-4);
+            // This should always be true unless we have a pointer error.
+            if( _midiData[_size] == 0 )
+            {
+                printf("Scanning for next track marker.\n");
+                // Start searching right after the previous valid track pointer.
+                int position = lastTrackPtr + 4;
+                bool recovered = false;
+                while( position < (_size - 4) )
+                {
+                    if( !memcmp(&(_midiData[position]), "MTrk", 4))
+                    {
+                        ptr = position;
+                        recovered = true;
+                        printf("MTrk header found at position %d\n", position);
+                        break;
+                    }
+                    position++;
+                }
+                // If we recovered, try again.
+                if( recovered )
+                {
+                    continue;
+                }
+            }
 			break;
 		}
 		unsigned long trackSize = Read4Bytes(&(_midiData[ptr]));
@@ -366,6 +396,8 @@ bool MidiFile::Load(const char* filename)
 		}
 		ReadTrack(currentTrack, ptr, trackSize);
 		currentTrack += 1;
+        // Store the last track pointer position, accounting for the length of MTrk and track size.
+        lastTrackPtr = ptr - 8;
 		ptr += trackSize;
 	}
 
