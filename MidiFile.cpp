@@ -117,7 +117,7 @@ int MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* 
 	case 0x21:
 		{
 			unsigned char midiPort = *inPos++;
-			printf("MIDI Port %d.\n", midiPort);
+			//printf("MIDI Port %d.\n", midiPort);
 			break;
 		}
 	case 0x2F:
@@ -594,7 +594,7 @@ int MidiFile::GetLengthInTicks()
 		if( currenttick != 0 )
 		{
 			int tracklength = pulseLength * currenttick;
-			printf( "Track length using tempo method is %d seconds\n", tracklength );
+			//printf( "Track length using tempo method is %d seconds\n", tracklength );
 		}
 	}
 	return highesttick;
