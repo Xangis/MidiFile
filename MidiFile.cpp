@@ -530,6 +530,7 @@ MidiTrack* MidiFile::GetTrackData(int track)
 	{
 		return _midiTracks[track];
 	}
+    return NULL;
 }
 
 int MidiFile::GetPPQN()

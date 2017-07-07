@@ -31,3 +31,8 @@
 # Visual Studio stuff
 *.filters
 *.user
+*.sdf
+*.suo
+ipch/
+Debug/
+Release/
