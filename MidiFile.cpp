@@ -623,7 +623,7 @@ bool MidiFile::Save(const char* filename)
 		fprintf(file, "MTrk");
 		Write4Bytes(file, numBytesWritten);
         fwrite(data, numBytesWritten, 1, file);
-		delete data;
+		delete[] data;
 	}
 
 	fclose(file);
