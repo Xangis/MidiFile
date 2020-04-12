@@ -29,7 +29,7 @@ public:
 	int GetPPQN();
 	double GetBPM();
 	double GetPulseLength(); // Gets pulse length in seconds.
-	MidiTrack* GetTrackData(int track);
+	MidiTrack* GetTrackData(unsigned int track);
 	int WriteTrackDataToBuffer(unsigned char* data, int size, int track);
     void SetBPM(double bpm);
 private:
@@ -42,7 +42,7 @@ private:
     unsigned char* _midiData;
 	unsigned char* _trackName;
     unsigned long _size;
-    short _numTracks;
+    unsigned short _numTracks;
 	double _tempo;
     short _timeDivision;
 	unsigned char _timeSignatureNumerator;

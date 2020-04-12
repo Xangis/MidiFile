@@ -292,7 +292,7 @@ MidiFile::~MidiFile()
 	{
 		delete[] _trackName;
 	}
-	for( int i = 0; i < _midiTracks.size(); i++ )
+	for( unsigned int i = 0; i < _midiTracks.size(); i++ )
 	{
 		delete _midiTracks[i];
 	}
@@ -344,11 +344,11 @@ bool MidiFile::Load(const char* filename)
 		return false;
 	}
 
-	int ptr = 14;
-	int currentTrack = 0;
+	unsigned int ptr = 14;
+	unsigned int currentTrack = 0;
 
     // Used for recovery when track size is incorrect.
-    int lastTrackPtr = 0;
+    unsigned int lastTrackPtr = 0;
 
 	while( ptr < _size && currentTrack < _numTracks )
 	{
@@ -366,7 +366,7 @@ bool MidiFile::Load(const char* filename)
             {
                 printf("Scanning for next track marker.\n");
                 // Start searching right after the previous valid track pointer.
-                int position = lastTrackPtr + 4;
+                unsigned int position = lastTrackPtr + 4;
                 bool recovered = false;
                 while( position < (_size - 4) )
                 {
@@ -486,7 +486,7 @@ bool MidiFile::ReadTrack(int track, unsigned int dataPtr, unsigned int length)
 int MidiFile::GetNumEvents()
 {
 	int events = 0;
-	for( int i = 0; i < _midiTracks.size(); i++ )
+	for( unsigned int i = 0; i < _midiTracks.size(); i++ )
 	{
 		events += _midiTracks[i]->GetNumEvents();
 	}
@@ -524,7 +524,7 @@ int MidiFile::GetType()
 	return _format;
 }
 
-MidiTrack* MidiFile::GetTrackData(int track)
+MidiTrack* MidiFile::GetTrackData(unsigned int track)
 {
 	if( track < _midiTracks.size() )
 	{
@@ -577,7 +577,7 @@ int MidiFile::GetLengthInTicks()
 	int currenttick = 0;
 	double pulseLength = GetPulseLength();
 
-	for( int i = 0; i < _midiTracks.size(); i++ )
+	for( unsigned int i = 0; i < _midiTracks.size(); i++ )
 	{
 		currenttick = 0;
 		MIDIEvent* lastEvent = _midiTracks[i]->GetLastEvent();
