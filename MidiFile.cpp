@@ -134,7 +134,7 @@ int MidiFile::ParseMetaEvent(int track, unsigned long deltaTime, unsigned char* 
 			tempo = (tempo << 8) + byte3;
 			tempo = (tempo << 8) + byte4;
 			double calculatedTempo = 60000000.0 / tempo;
-			printf("Tempo: %d value, BPM = %d, size read = %d, metalen = %d, byte1 = %d, byte2 = %d, byte3 = %d, byte4 = %d\n", tempo, calculatedTempo, sizeRead, metalen, byte1, byte2, byte3, byte4);
+			printf("Tempo: %d value, BPM = %f, size read = %d, metalen = %d, byte1 = %d, byte2 = %d, byte3 = %d, byte4 = %d\n", tempo, calculatedTempo, sizeRead, metalen, byte1, byte2, byte3, byte4);
 			// Use the first occurrence of a tempo as the overall song tempo.
 			if( _tempo == 0 )
 			{
@@ -276,6 +276,10 @@ MidiFile::MidiFile()
     _format = TYPE0;
 	_midiData = NULL;
 	_trackName = NULL;
+	_loaded = false;
+	_numTracks = 0;
+	_size = 0;
+	_timeDivision = 0;
 	_timeSignatureNumerator = -1;
 	_timeSignatureDenominator = -1;
 	_timeSignatureTicksPerClick = -1;
@@ -594,7 +598,7 @@ int MidiFile::GetLengthInTicks()
 
 		if( currenttick != 0 )
 		{
-			int tracklength = pulseLength * currenttick;
+			int tracklength = int(pulseLength * currenttick);
 			//printf( "Track length using tempo method is %d seconds\n", tracklength );
 		}
 	}

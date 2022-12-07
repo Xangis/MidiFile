@@ -22,7 +22,7 @@ private:
 	std::list<MIDIEvent*> _midiEvents;
 	const unsigned char* _title;
 	std::list<MIDIEvent*>::iterator _tickPointer;
-	int _tickPosition;
+	unsigned int _tickPosition;
 };
 
 #endif
